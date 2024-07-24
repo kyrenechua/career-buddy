@@ -92,6 +92,6 @@ if st.button("Get Career Suggestions"):
         st.warning("No resume uploaded. Please upload a resume before getting career suggestions.")
 
 st.subheader("Coursera Buddy") # Subheader for Coursera Buddy feature
-if (st.button("Get Coursera Sugesstions")):
+if (st.button("Get Coursera Suggestions")):
     st.write("Coursera Suggestions:")
     st.write(get_suggestions(career_goals))

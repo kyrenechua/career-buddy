@@ -10,7 +10,7 @@ from langchain_community.document_loaders import (
     UnstructuredFileLoader,
 )
 
-file_path = "pdf_files/resume.pdf"
+file_path = "resume.pdf"
 
 REGION = "us-east-1"
 
