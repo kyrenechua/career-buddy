@@ -1,0 +1,12 @@
+unstructured
+unstructured[all-docs]
+langchain
+langchain-community
+langchain-core
+faiss-cpu
+transformers
+sentence_transformers
+streamlit
+boto3
+botocore
+pandas
