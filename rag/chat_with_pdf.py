@@ -1,16 +1,17 @@
 import json
 import os
-import shutil
 import boto3
+
 from langchain_community.embeddings import BedrockEmbeddings
 from langchain_community.vectorstores import FAISS
-
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import (
     UnstructuredFileLoader,
 )
 
-file_path = "resume.pdf"
+from call_models_api.call_bedrock_runtime_models import call_claude_haiku, call_mistral_model
+
+
 
 REGION = "us-east-1"
 
@@ -53,73 +54,6 @@ def chunk_doc_to_text(doc_loc: str):
     return texts
 
 
-def call_claude_haiku(prompt):
-
-    prompt_config = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 1000,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ],
-    }
-
-    body = json.dumps(prompt_config)
-
-    modelId = "anthropic.claude-3-haiku-20240307-v1:0"
-    accept = "application/json"
-    contentType = "application/json"
-
-    response = bedrock_runtime.invoke_model(
-        body=body, modelId=modelId, accept=accept, contentType=contentType
-    )
-    response_body = json.loads(response.get("body").read())
-
-    results = response_body.get("content")[0].get("text")
-    return results
-
-def call_claude_mistral(prompt):
-
-    prompt_config = {
-        "prompt": f"<s>[INST] {prompt} [/INST]",
-        "max_tokens": 4096,
-        "temperature": 0.5,
-        "top_p": 0.9,
-        "top_k": 50
-    }
-
-    body = json.dumps(prompt_config)
-
-    modelId = "mistral.mistral-small-2402-v1:0"
-    accept = "application/json"
-    contentType = "application/json"
-
-
-    try:
-        response = bedrock_runtime.invoke_model(
-            body=body, modelId=modelId, accept=accept, contentType=contentType
-        )
-        response_body = json.loads(response.get("body").read())
-
-        # Log the entire response for debugging
-        print("Full Response Body:", response_body)
-
-        # Handle the case where response_body might not have the expected structure
-        if "outputs" in response_body and len(response_body["outputs"]) > 0:
-            message_content = response_body["outputs"][0]["text"]
-            return message_content
-        else:
-            raise ValueError("Unexpected response structure or empty content.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None
-
-
-
 
 def query_rag_with_bedrock(query):
 
@@ -152,7 +86,7 @@ def query_rag_with_bedrock(query):
     Question: {query}
     Answer:"""
 
-    return call_claude_haiku(prompt)
+    return call_claude_haiku(prompt, max_tokens=1000)
 
 def career_rag_with_bedrock(query):
     embeddings = BedrockEmbeddings(
@@ -196,6 +130,77 @@ def career_rag_with_bedrock(query):
     I wish you all the best in your career! You can do it!
 """
 
-    return call_claude_mistral(prompt)
+    return call_mistral_model(prompt, max_tokens=4096)
+
+
+
+def onboard_rag_with_bedrock(query):
+    embeddings = BedrockEmbeddings(
+        client=bedrock_runtime,
+        model_id="amazon.titan-embed-text-v2:0",
+    )
+
+    pdf_loc = "./pdf_files/resume.pdf"
+
+    if os.path.exists("local_index"):
+        local_vector_store = FAISS.load_local("local_index", embeddings,allow_dangerous_deserialization=True)
+    else:
+        texts = chunk_doc_to_text(pdf_loc)
+        local_vector_store = FAISS.from_documents(
+            texts, embeddings
+        )
+        local_vector_store.save_local("local_index")
+
+    docs = local_vector_store.similarity_search(query)
+    context = ""
+
+    for doc in docs:
+        context += doc.page_content
+
+    prompt = f"""You are a Human Resources representative that is in charge of onboarding a new employee into the company, Nomura, an international bank.
+                The employee you have to onboard is the one stated in the resume.
+                The employee is currently joining Nomura as a {query}.
+                From the resume, analyse if the employee is a fresh graduate or has been in the field for some time. Change the context of the onboarding accordingly.
+                For example, for someone who is experienced, they need not go through onboarding for technical skills, and would focus more on Nomura-specific standard operating procedures.
+                Whereas for a fresh graduate, they would have to go through all the procedures.
+                Guide the employee through the onboarding procedures that he/she ha to go through.
+                Begin by greeting the employee with "Hi <insert name>, we are glad to have you join our team!", then introduce yourself and continue with the onboarding process.
+    
+"""
+
+    return call_mistral_model(prompt, max_tokens=4096)
+
+def chat_rag_with_bedrock(query):
+
+    embeddings = BedrockEmbeddings(
+        client=bedrock_runtime,
+        model_id="amazon.titan-embed-text-v2:0",
+    )
+
+    pdf_loc = "./pdf_files/resume.pdf"
+
+    if os.path.exists("local_index"):
+        local_vector_store = FAISS.load_local("local_index", embeddings,allow_dangerous_deserialization=True)
+    else:
+        texts = chunk_doc_to_text(pdf_loc)
+        local_vector_store = FAISS.from_documents(
+            texts, embeddings
+        )
+        local_vector_store.save_local("local_index")
+
+    docs = local_vector_store.similarity_search(query)
+    context = ""
+
+    for doc in docs:
+        context += doc.page_content
+
+    prompt = f"""Use the following pieces of context to answer the question at the end. If the answer cannot be found in the context, then just answer the question.
+
+    {context}
+
+    Question: {query}
+    Answer:"""
+
+    return call_claude_haiku(prompt, max_tokens=1000)
 
 

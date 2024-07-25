@@ -1,20 +1,20 @@
 import boto3
-import os
 import json
 
-bedrock_kb_client = boto3.client('bedrock-agent-runtime', 'us-east-1')
+from call_models_api.call_kb_model import call_kb_model
+from call_models_api.call_bedrock_runtime_models import call_mistral_model, call_claude_haiku
 
 bedrock_runtime = boto3.client(
     service_name="bedrock-runtime",
     region_name="us-east-1",
 )
 
-
 def create_prompt(career_goals_summary):
     prompt = f"""Based on the user's career goals, recommend only 5 suitable Coursera courses
         Career goals: {career_goals_summary}
         """
     return prompt
+
 
 def output_prompt(course_info):
     prompt= f"""Based on the recommended courses list given below, output the information into the format given:
@@ -35,19 +35,8 @@ def output_prompt(course_info):
         ..."""
     return prompt
 
-def call_kb_model(prompt):
-    knowledgeBaseResponse  = bedrock_kb_client.retrieve_and_generate(
-        input={'text': prompt},
-        retrieveAndGenerateConfiguration={
-            'knowledgeBaseConfiguration': {
-                'knowledgeBaseId': 'OCSV8F0PEC',
-                'modelArn': 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'
-            },
-            'type': 'KNOWLEDGE_BASE'
-        })
-    return knowledgeBaseResponse
 
-def call_mistral_model(prompt, max_tokens):
+def call_mistral_model_dummy(prompt, max_tokens):
     if not prompt.strip():
         raise ValueError("Input prompt is empty. Please provide a valid prompt.")
 
@@ -80,6 +69,7 @@ def call_mistral_model(prompt, max_tokens):
         print(f"An error occurred: {e}")
         return None
 
+
 def summarize_career_goals(career_goals):
     prompt = f"Summarize the following career goals and extract key topics or skills:\n{career_goals}"
     summary = call_mistral_model(prompt, max_tokens=100)
@@ -88,13 +78,12 @@ def summarize_career_goals(career_goals):
 def extract_and_format_courses(response):
     # Extract the relevant details from the response
     text = response['citations'][0]['retrievedReferences'][0]['content']['text']
-    print(text)
     return text
 
 
 def getAnswers(career_goals_summary):
     prompt = create_prompt(career_goals_summary)
-    response = call_kb_model(prompt)
+    response = call_kb_model('OCSV8F0PEC', prompt)
     #print(response)
     formatted_output = extract_and_format_courses(response)
     new_prompt = output_prompt(formatted_output)

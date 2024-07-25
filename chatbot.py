@@ -1,14 +1,10 @@
-import base64
-import io
-import json
-import os
-
 import boto3
 import streamlit as st
 
 from index_handler import clear_local_index, delete_resume_file
-from rag.chat_with_pdf import query_rag_with_bedrock, file_path, career_rag_with_bedrock
-from rag.load_kb import get_suggestions
+from rag.chat_with_pdf import query_rag_with_bedrock, career_rag_with_bedrock
+from rag.load_cousera_kb import get_suggestions
+from rag.load_salaries_kb import get_salaries
 
 REGION = "us-east-1"
 
@@ -28,8 +24,8 @@ if "initialized" not in st.session_state:
     delete_resume_file(file_path)
     st.session_state.initialized = True
 
-st.title("Growth Mentor")  # Title of the application
-st.subheader("I am the Growth Mentor. How can I help you today?")  # Subheader
+st.title("Nomura AI Powered Employee Mentorship")  # Title of the application
+st.subheader("Created by Team F-Scholars")  # Subheader
 
 # Initialize session state for resume file
 if "resume_uploaded" not in st.session_state:
@@ -56,15 +52,16 @@ if st.session_state.resume_uploaded:
         st.session_state.resume_file = None
         st.success("Resume deleted successfully!")
 
+
 # User input for query
-query = st.text_input("Enter your query")
+query = st.text_input("What questions do you have about your career")
 
 # Button to submit query
 if st.button("Submit Query"):
     if st.session_state.resume_uploaded:
         st.write(f"Query: {query}")
 
-        # Display the result of the query
+       # Display the result of the query
         result = query_rag_with_bedrock(query)
         st.session_state.query_result = result
         st.write("Result:")
@@ -95,3 +92,14 @@ st.subheader("Coursera Buddy") # Subheader for Coursera Buddy feature
 if (st.button("Get Coursera Suggestions")):
     st.write("Coursera Suggestions:")
     st.write(get_suggestions(career_goals))
+
+
+st.subheader("Salary Buddy")  # Subheader for Salary Buddy feature
+current_monthly_salary = st.text_input("Enter your current monthly salary (USD)")
+job_role = st.text_input("Enter your job_role")
+job_experience = st.text_input("Enter your job experience")
+job_location = st.text_input("Enter your job location")
+if(st.button("Get Salary Suggestions")):
+    st.write(f"You are a {job_role} with {job_experience} experience in {job_location}")
+    st.write("Salary Suggestions:")
+    st.write(get_salaries(current_monthly_salary, job_role, job_experience, job_location))
