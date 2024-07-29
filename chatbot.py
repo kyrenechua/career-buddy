@@ -24,8 +24,8 @@ if "initialized" not in st.session_state:
     delete_resume_file(file_path)
     st.session_state.initialized = True
 
-st.title("Nomura AI Powered Employee Mentorship")  # Title of the application
-st.subheader("Created by Team F-Scholars")  # Subheader
+st.title("SKYLAB")  # Title of the application
+st.subheader("Nomura AI Powered Employee Mentorship, created by Team F-Scholars")  # Subheader
 
 # Initialize session state for resume file
 if "resume_uploaded" not in st.session_state:
